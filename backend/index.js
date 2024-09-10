@@ -106,6 +106,7 @@ const typeDefs = `
    }
    type Author {
    name: String!
+   born: Int
    bookCount: Int!
    }
   type Query {
@@ -114,6 +115,9 @@ const typeDefs = `
     allBooks(author: String, genre: String): [Book]
     allAuthors: [Author]
   }
+    type Mutation {
+    addBook(title: String!, published: Int!, author: String!, genres: [String!]): Book
+    }
 `;
 
 const resolvers = {
@@ -129,6 +133,28 @@ const resolvers = {
       return result;
     },
     allAuthors: () => authors,
+  },
+  Mutation: {
+    addBook: (root, args) => {
+      const newBook = {
+        title: args.title,
+        published: args.published,
+        author: args.author,
+        genres: args.genres,
+      };
+      books.push(newBook);
+      const authorIndex = authors.findIndex(
+        (author) => author.name === args.author
+      );
+      if (authorIndex === -1) {
+        authors.push({
+          name: args.author,
+          born: null,
+          bookCount: 1,
+        });
+      }
+      return newBook;
+    },
   },
   Author: {
     bookCount: (root) =>
