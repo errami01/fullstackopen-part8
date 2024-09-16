@@ -1,5 +1,21 @@
 const { ApolloServer } = require("@apollo/server");
 const { startStandaloneServer } = require("@apollo/server/standalone");
+const mongoose = require("mongoose");
+mongoose.set("strictQuery", false);
+const Book = require("./models/book");
+const Author = require("./models/author");
+require("dotenv").config();
+
+const MONGODB_URI = process.env.MONGODB_URI;
+console.log("connecting to", MONGODB_URI);
+mongoose
+  .connect(MONGODB_URI)
+  .then(() => {
+    console.log("connected to MongoDB");
+  })
+  .catch((error) => {
+    console.log("error connection to MongoDB:", error.message);
+  });
 
 let authors = [
   {
@@ -20,26 +36,14 @@ let authors = [
   {
     name: "Joshua Kerievsky", // birthyear not known
     id: "afa5b6f2-344d-11e9-a414-719c6709cf3e",
+    born: null,
   },
   {
     name: "Sandi Metz", // birthyear not known
     id: "afa5b6f3-344d-11e9-a414-719c6709cf3e",
+    born: null,
   },
 ];
-
-/*
- * Suomi:
- * Saattaisi olla järkevämpää assosioida kirja ja sen tekijä tallettamalla kirjan yhteyteen tekijän nimen sijaan tekijän id
- * Yksinkertaisuuden vuoksi tallennamme kuitenkin kirjan yhteyteen tekijän nimen
- *
- * English:
- * It might make more sense to associate a book with its author by storing the author's id in the context of the book instead of the author's name
- * However, for simplicity, we will store the author's name in connection with the book
- *
- * Spanish:
- * Podría tener más sentido asociar un libro con su autor almacenando la id del autor en el contexto del libro en lugar del nombre del autor
- * Sin embargo, por simplicidad, almacenaremos el nombre del autor en conexión con el libro
- */
 
 let books = [
   {
@@ -92,6 +96,19 @@ let books = [
     genres: ["classic", "revolution"],
   },
 ];
+/*
+ * Suomi:
+ * Saattaisi olla järkevämpää assosioida kirja ja sen tekijä tallettamalla kirjan yhteyteen tekijän nimen sijaan tekijän id
+ * Yksinkertaisuuden vuoksi tallennamme kuitenkin kirjan yhteyteen tekijän nimen
+ *
+ * English:
+ * It might make more sense to associate a book with its author by storing the author's id in the context of the book instead of the author's name
+ * However, for simplicity, we will store the author's name in connection with the book
+ *
+ * Spanish:
+ * Podría tener más sentido asociar un libro con su autor almacenando la id del autor en el contexto del libro en lugar del nombre del autor
+ * Sin embargo, por simplicidad, almacenaremos el nombre del autor en conexión con el libro
+ */
 
 /*
   you can remove the placeholder query once your first one has been implemented 
@@ -100,14 +117,16 @@ let books = [
 const typeDefs = `
   type Book {
    title: String!
-   author: String!
+   author: Author!
    published: Int!
    genres: [String!]!
+   id: ID!
    }
    type Author {
    name: String!
    born: Int
    bookCount: Int!
+   id: ID!
    }
   type Query {
     bookCount: Int
@@ -123,7 +142,7 @@ const typeDefs = `
 
 const resolvers = {
   Query: {
-    bookCount: () => books.length,
+    bookCount: async () => Book.collection.countDocuments(),
     authorCount: () => authors.length,
     allBooks: (root, args) => {
       let result = [...books];
@@ -135,26 +154,41 @@ const resolvers = {
     },
     allAuthors: () => authors,
   },
-  Mutation: {
-    addBook: (root, args) => {
-      const newBook = {
-        title: args.title,
-        published: args.published,
-        author: args.author,
-        genres: args.genres,
+  Book: {
+    author: async (root) => {
+      // console.log(`root: ${JSON.stringify(root)}`);
+      const bookCount = await Book.find({
+        author: root.author._id,
+      }).countDocuments();
+      return {
+        name: root.author.name,
+        born: root.author.born,
+        bookCount: 10,
       };
-      books.push(newBook);
-      const authorIndex = authors.findIndex(
-        (author) => author.name === args.author
-      );
-      if (authorIndex === -1) {
-        authors.push({
+    },
+  },
+  Mutation: {
+    addBook: async (root, args) => {
+      // console.log(root);
+      let existingAuthor = await Author.findOne({ name: args.author });
+      if (!existingAuthor) {
+        const newAuthor = new Author({
           name: args.author,
           born: null,
           bookCount: 1,
         });
+        existingAuthor = await newAuthor.save();
       }
-      return newBook;
+
+      const newBook = {
+        title: args.title,
+        published: args.published,
+        author: existingAuthor._id,
+        genres: args.genres,
+      };
+      const book = new Book(newBook);
+
+      return await book.save();
     },
     editAuthor: (root, args) => {
       const author = authors.find((author) => author.name === args.name);
