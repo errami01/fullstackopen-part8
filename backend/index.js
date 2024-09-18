@@ -1,4 +1,5 @@
 const { ApolloServer } = require("@apollo/server");
+const { GraphQLError } = require("graphql");
 const { startStandaloneServer } = require("@apollo/server/standalone");
 const mongoose = require("mongoose");
 mongoose.set("strictQuery", false);
@@ -170,7 +171,17 @@ const resolvers = {
           name: args.author,
           born: null,
         });
-        existingAuthor = await newAuthor.save();
+        try {
+          existingAuthor = await newAuthor.save();
+        } catch (error) {
+          throw new GraphQLError("Saving auther failed", {
+            extensions: {
+              code: "BAD_USER_INPUT",
+              invalidArgs: args.author,
+              error,
+            },
+          });
+        }
       }
 
       const newBook = {
@@ -180,19 +191,51 @@ const resolvers = {
         genres: args.genres,
       };
       const book = new Book(newBook);
-
-      return await book.save();
-    },
-    editAuthor: (root, args) => {
-      const author = authors.find((author) => author.name === args.name);
-      if (!author) {
-        return null;
+      try {
+        return await book.save();
+      } catch (error) {
+        throw new GraphQLError("Saving book failed", {
+          extensions: {
+            code: "BAD_USER_INPUT",
+            invalidArgs: args.title,
+            error,
+          },
+        });
       }
-      const updatedAuthor = { ...author, born: args.setBornTo };
-      authors = authors.map((author) =>
-        author.name === args.name ? updatedAuthor : author
-      );
-      return updatedAuthor;
+    },
+    editAuthor: async (root, args) => {
+      const author = await Author.findOne({ name: args.name });
+
+      try {
+        author.born = args.setBornTo;
+        return await author.save();
+      } catch (error) {
+        if (!author) {
+          throw new GraphQLError("No author found", {
+            extensions: {
+              code: "BAD_USER_INPUT",
+              invalidArgs: args.setBornTo,
+              error,
+            },
+          });
+        }
+        throw new GraphQLError("Saving auther failed", {
+          extensions: {
+            code: "BAD_USER_INPUT",
+            invalidArgs: args.setBornTo,
+            error,
+          },
+        });
+      }
+      // const author = authors.find((author) => author.name === args.name);
+      // if (!author) {
+      //   return null;
+      // }
+      // const updatedAuthor = { ...author, born: args.setBornTo };
+      // authors = authors.map((author) =>
+      //   author.name === args.name ? updatedAuthor : author
+      // );
+      // return updatedAuthor;
     },
   },
   Author: {
