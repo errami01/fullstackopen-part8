@@ -142,40 +142,33 @@ const typeDefs = `
 
 const resolvers = {
   Query: {
-    bookCount: async () => Book.collection.countDocuments(),
-    authorCount: () => authors.length,
-    allBooks: (root, args) => {
-      let result = [...books];
-      if (args.genre)
-        result = result.filter((book) => book.genres.includes(args.genre));
-      if (args.author)
-        result = result.filter((book) => book.author === args.author);
-      return result;
+    authorCount: async () => await Author.countDocuments(),
+    allBooks: async (root, args) => {
+      if (args.genre && args.author) {
+        const author = await Author.findOne({ name: args.author });
+        return Book.find({ author: author.id, genres: args.genre });
+      }
+      if (args.genre) return Book.find({ genres: args.genre });
+      if (args.author) {
+        const author = await Author.findOne({ name: args.author });
+        return Book.find({ author: author.id });
+      }
+      return await Book.find({});
     },
-    allAuthors: () => authors,
+    allAuthors: async () => await Author.find({}),
   },
   Book: {
     author: async (root) => {
-      // console.log(`root: ${JSON.stringify(root)}`);
-      const bookCount = await Book.find({
-        author: root.author._id,
-      }).countDocuments();
-      return {
-        name: root.author.name,
-        born: root.author.born,
-        bookCount: 10,
-      };
+      return await Author.findById(root.author);
     },
   },
   Mutation: {
     addBook: async (root, args) => {
-      // console.log(root);
       let existingAuthor = await Author.findOne({ name: args.author });
       if (!existingAuthor) {
         const newAuthor = new Author({
           name: args.author,
           born: null,
-          bookCount: 1,
         });
         existingAuthor = await newAuthor.save();
       }
@@ -203,8 +196,8 @@ const resolvers = {
     },
   },
   Author: {
-    bookCount: (root) =>
-      books.filter((book) => book.author === root.name).length,
+    bookCount: async (root) =>
+      await Book.find({ author: root.id }).countDocuments(),
   },
 };
 
