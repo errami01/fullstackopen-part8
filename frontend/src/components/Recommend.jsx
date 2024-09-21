@@ -2,20 +2,16 @@ import { useQuery } from "@apollo/client";
 import { USER } from "../queries";
 
 const Recommend = ({ show }) => {
-  const userQuery = useQuery(USER, {
-    fetchPolicy: "no-cache", // Always fetch from the network
-  });
+  const userQuery = useQuery(USER);
 
   if (!show) {
     return null;
   }
   if (userQuery.loading) {
-    console.log("Loading");
     return <div>loading...</div>;
   }
   const booksToDisplay = userQuery.data.me.recommend;
   const genre = userQuery.data.me.favoriteGenre;
-  console.log(booksToDisplay);
   return (
     <div>
       <h2>recommendations</h2>

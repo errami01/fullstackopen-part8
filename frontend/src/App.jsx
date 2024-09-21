@@ -11,7 +11,6 @@ const App = () => {
   const [token, setToken] = useState(
     localStorage.getItem("library-user-token") || null
   );
-  console.log(token);
   const client = useApolloClient();
   const logout = () => {
     setToken(null);
