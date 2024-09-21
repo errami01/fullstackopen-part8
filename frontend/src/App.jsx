@@ -3,6 +3,7 @@ import Authors from "./components/Authors";
 import Books from "./components/Books";
 import NewBook from "./components/NewBook";
 import Login from "./components/Login";
+import Recommend from "./components/Recommend";
 import { useApolloClient } from "@apollo/client";
 
 const App = () => {
@@ -10,6 +11,7 @@ const App = () => {
   const [token, setToken] = useState(
     localStorage.getItem("library-user-token") || null
   );
+  console.log(token);
   const client = useApolloClient();
   const logout = () => {
     setToken(null);
@@ -25,6 +27,7 @@ const App = () => {
         {token ? (
           <>
             <button onClick={() => setPage("add")}>add book</button>
+            <button onClick={() => setPage("recommend")}>recommend</button>
             <button onClick={() => logout()}>logout</button>
           </>
         ) : (
@@ -37,7 +40,7 @@ const App = () => {
       <Books show={page === "books"} />
 
       <NewBook show={page === "add"} />
-
+      <Recommend show={page === "recommend"} token={token} />
       <Login show={page === "login"} setToken={setToken} setPage={setPage} />
     </div>
   );

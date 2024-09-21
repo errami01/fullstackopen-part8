@@ -62,3 +62,18 @@ export const LOGIN = gql`
     }
   }
 `;
+export const USER = gql`
+  query {
+    me {
+      username
+      favoriteGenre
+      recommend {
+        title
+        author {
+          name
+        }
+        published
+      }
+    }
+  }
+`;
