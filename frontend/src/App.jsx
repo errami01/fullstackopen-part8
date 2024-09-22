@@ -4,9 +4,22 @@ import Books from "./components/Books";
 import NewBook from "./components/NewBook";
 import Login from "./components/Login";
 import Recommend from "./components/Recommend";
-import { useApolloClient } from "@apollo/client";
+import {
+  useQuery,
+  useMutation,
+  useSubscription,
+  useApolloClient,
+} from "@apollo/client";
+import { BOOK_ADDED } from "./queries";
 
 const App = () => {
+  useSubscription(BOOK_ADDED, {
+    onData: ({ data }) => {
+      const addedBook = data.data.bookAdded;
+      alert(`${addedBook.title} added`);
+      console.log(data);
+    },
+  });
   const [page, setPage] = useState("authors");
   const [token, setToken] = useState(
     localStorage.getItem("library-user-token") || null
