@@ -84,22 +84,27 @@ const resolvers = {
         });
       }
       let existingAuthor = await Author.findOne({ name: args.author });
-      if (!existingAuthor) {
-        const newAuthor = new Author({
-          name: args.author,
-          born: null,
-        });
-        try {
-          existingAuthor = await newAuthor.save();
-        } catch (error) {
-          throw new GraphQLError("Saving auther failed", {
-            extensions: {
-              code: "BAD_USER_INPUT",
-              invalidArgs: args.author,
-              error,
-            },
+
+      try {
+        if (!existingAuthor) {
+          const newAuthor = new Author({
+            name: args.author,
+            born: null,
+            bookCount: 1,
           });
+          existingAuthor = await newAuthor.save();
+        } else {
+          existingAuthor.bookCount++;
+          await existingAuthor.save();
         }
+      } catch (error) {
+        throw new GraphQLError("Saving auther failed", {
+          extensions: {
+            code: "BAD_USER_INPUT",
+            invalidArgs: args.author,
+            error,
+          },
+        });
       }
 
       const newBook = {
@@ -161,10 +166,6 @@ const resolvers = {
     bookAdded: {
       subscribe: () => pubsub.asyncIterator("BOOK_ADDED"),
     },
-  },
-  Author: {
-    bookCount: async (root) =>
-      await Book.find({ author: root.id }).countDocuments(),
   },
 };
 module.exports = resolvers;
